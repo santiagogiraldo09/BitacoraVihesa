@@ -266,6 +266,107 @@ function recopilarActividadesFinalizadas() {
     return actividades;
 }
 
+async function saveFullReport() {
+    // 1. Referencia al overlay de carga para feedback visual
+    const overlay = document.getElementById('loading-overlay');
+    if (overlay) overlay.style.display = 'flex';
+
+    try {
+        // 2. Obtener el project_id de la URL actual
+        const urlParams = new URLSearchParams(window.location.search);
+        const projectId = urlParams.get('project_id');
+
+        if (!projectId) {
+            throw new Error("No se pudo identificar el proyecto. Por favor, regresa a la pantalla de registros.");
+        }
+
+        // 3. Capturar la fecha actual en formato YYYY-MM-DD para la base de datos
+        const hoy = new Date();
+        const fechaActual = hoy.toISOString().split('T')[0];
+
+        // 4. Recolectar dinámicamente la lista de EQUIPOS Y SUMINISTROS
+        // Filtramos los textos de cada 'span' dentro de la lista visual
+        const equiposCapturados = [];
+        document.querySelectorAll('#equipment-list .equipment-item span').forEach(el => {
+            const nombreEquipo = el.innerText.trim();
+            if (nombreEquipo) {
+                equiposCapturados.push(nombreEquipo);
+            }
+        });
+
+        // 5. Recolectar dinámicamente las NOTAS (Actividades) y su MULTIMEDIA
+        const notasCapturadas = [];
+        const itemBoxes = document.querySelectorAll('.dynamic-item-box');
+        
+        itemBoxes.forEach((box) => {
+            // El atributo data-index nos sirve para amarrar la multimedia correcta
+            const index = box.getAttribute('data-index');
+            
+            // Extraer el texto escrito en el textarea de esa tarjeta
+            const textoNota = box.querySelector('.field-nota').value.trim();
+            
+            // Solo procesamos la nota si tiene texto o si tiene multimedia
+            if (textoNota || (itemPhotos[index] && itemPhotos[index].length > 0)) {
+                
+                // Extraer fotos y videos de los arrays globales usando el índice
+                // itemPhotos e itemVideos deben estar definidos globalmente en script.js
+                const fotosDeEstaNota = (typeof itemPhotos !== 'undefined') ? (itemPhotos[index] || []) : [];
+                const videosDeEstaNota = (typeof itemVideos !== 'undefined') ? (itemVideos[index] || []) : [];
+
+                notasCapturadas.push({
+                    texto: textoNota,
+                    fotos: fotosDeEstaNota, // Array de strings Base64
+                    videos: videosDeEstaNota // Array de strings Base64
+                });
+            }
+        });
+
+        // Validación: No permitir guardar reportes vacíos
+        if (equiposCapturados.length === 0 && notasCapturadas.length === 0) {
+            throw new Error("El reporte está vacío. Agrega al menos un equipo o una actividad.");
+        }
+
+        // 6. Construir el objeto final (Paquete JSON)
+        const reportData = {
+            id_proyecto: projectId,
+            fecha: fechaActual,
+            equipos: equiposCapturados,
+            notas: notasCapturadas
+        };
+
+        console.log("Iniciando envío de reporte completo a Python...", reportData);
+
+        // 7. Enviar datos al servidor mediante Fetch API
+        const response = await fetch('/guardar_reporte_vihesa', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(reportData)
+        });
+
+        // 8. Procesar la respuesta del servidor
+        const result = await response.json();
+
+        if (response.ok) {
+            alert("✅ Éxito: " + result.message);
+            // Redirigir a la pantalla de registros después de un guardado exitoso
+            window.location.href = '/registros';
+        } else {
+            // Si el servidor responde con error (ej: fallo en PostgreSQL)
+            throw new Error(result.error || "Error desconocido en el servidor.");
+        }
+
+    } catch (error) {
+        // 9. Manejo de errores y alertas al usuario
+        console.error("Error crítico en saveFullReport:", error);
+        alert("❌ No se pudo guardar el reporte:\n" + error.message);
+    } finally {
+        // 10. Ocultar el overlay de carga independientemente del resultado
+        if (overlay) overlay.style.display = 'none';
+    }
+}
+
 function agregarActividadPendiente() {
     const container = document.getElementById('container-act-pendientes');
     const id = contadorPendientes++;

@@ -29,6 +29,7 @@ from openpyxl.drawing.image import Image as ExcelImage
 from PIL import Image
 import base64
 import uuid
+import json
 import requests
 
 UPLOAD_FOLDER = 'uploads'
@@ -683,8 +684,8 @@ def index():
             cursor = conn.cursor()
             # Consultamos las columnas exactas de tu tabla según las imágenes
             cursor.execute("""
-                SELECT nombre_proyecto, cliente, numero_proyecto, ubicacion 
-                FROM proyectos 
+                SELECT nombre_proyecto, cliente, contratista, orden_de_trabajo, planta, ubicacion 
+                FROM "proyectosVihesa" 
                 WHERE id_proyecto = %s
             """, (project_id,))
             row = cursor.fetchone()
@@ -692,8 +693,10 @@ def index():
                 project_info = {
                     'nombre': row[0],
                     'cliente': row[1],
-                    'numero': row[2],
-                    'ubicacion': row[3]
+                    'contratista': row[2],
+                    'orden_de_trabajo': row[3],
+                    'planta': row[4],
+                    'ubicacion': row[5]
                 }
             conn.close()
         except Exception as e:
@@ -989,6 +992,60 @@ def disciplinerecords():
 @app.route('/projectdetails')
 def projectdetails():
     return render_template('projectdetails.html')
+
+import json
+
+@app.route('/guardar_reporte_vihesa', methods=['POST'])
+def guardar_reporte_vihesa():
+    data = request.json
+    try:
+        conn = psycopg2.connect(**POSTGRES_CONFIG)
+        cursor = conn.cursor()
+
+        # PASO 1: Tabla Maestra (reporteDeTrabajoVihesa)
+        cursor.execute("""
+            INSERT INTO reporteDeTrabajoVihesa (id_proyecto, fecha, user_id) 
+            VALUES (%s, %s, %s) RETURNING id_reporte
+        """, (data['id_proyecto'], data['fecha'], session['user_id']))
+        id_reporte = cursor.fetchone()[0]
+
+        # PASO 2: Tabla Equipos (reporteEquiposVihesa)
+        for equipo in data.get('equipos', []):
+            cursor.execute("""
+                INSERT INTO reporteEquiposVihesa (id_reporte, nombre_equipo) 
+                VALUES (%s, %s)
+            """, (id_reporte, equipo))
+
+        # PASO 3, 4 y 5: Bucle de Notas y Multimedia
+        for nota in data.get('notas', []):
+            # Guardar Nota (reporteNotasVihesa)
+            cursor.execute("""
+                INSERT INTO reporteNotasVihesa (id_reporte, nota_texto) 
+                VALUES (%s, %s) RETURNING id_nota_item
+            """, (id_reporte, nota['texto']))
+            id_nota_item = cursor.fetchone()[0]
+
+            # Guardar Fotos (fotos_registro_vihesa) usando el id_nota_item generado
+            for foto_b64 in nota.get('fotos', []):
+                cursor.execute("""
+                    INSERT INTO fotos_registro_vihesa (id_nota_item, imagen_base64, description) 
+                    VALUES (%s, %s, %s)
+                """, (id_nota_item, foto_b64, "Evidencia Fotográfica"))
+
+            # Guardar Videos (videos_registro_vihesa)
+            for video_b64 in nota.get('videos', []):
+                cursor.execute("""
+                    INSERT INTO videos_registro_vihesa (id_nota_item, video_base64) 
+                    VALUES (%s, %s)
+                """, (id_nota_item, video_b64))
+
+        conn.commit()
+        return jsonify({"status": "success", "message": "Reporte y fotos guardados"}), 201
+    except Exception as e:
+        if conn: conn.rollback()
+        return jsonify({"status": "error", "error": str(e)}), 500
+    finally:
+        if conn: conn.close()
 
 @app.route('/add_project', methods=['GET', 'POST'])
 def add_project():

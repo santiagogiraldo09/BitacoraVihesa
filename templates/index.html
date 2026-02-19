@@ -3,52 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registro de Inspección de Obra</title>
+    <title>Reporte Diario de Trabajo - Vihesa</title>
     <link rel="icon" href="{{ url_for('static', filename='logo.png') }}" type="image/x-icon">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-<style>
-    /* Estilos para las tarjetas de ítems dinámicos */
-    .dynamic-item-box {
-        border: 1px solid #ddd;
-        padding: 15px;
-        margin-bottom: 25px;
-        border-radius: 10px;
-        background-color: #fcfcfc;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-    }
-    .item-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-bottom: 2px solid #FFAF33;
-        margin-bottom: 15px;
-        padding-bottom: 5px;
-    }
-    .item-header h3 {
-        margin: 0;
-        color: #FFAF33;
-    }
-    .photo-thumbnail-wrapper {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        width: 200px;
-        margin-top: 10px;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        padding: 5px;
-        background-color: #f9f9f9;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .thumbnail-image {
-        width: 100%;
-        height: 150px;
-        object-fit: cover;
-        border-radius: 4px;
-        margin-bottom: 5px;
-    }
-</style>
+    <style>
+        /* Mantenemos tus estilos de tarjetas dinámicas */
+        .dynamic-item-box {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 25px;
+            border-radius: 10px;
+            background-color: #fcfcfc;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #FFAF33; /* Color naranja característico */
+            margin-bottom: 15px;
+            padding-bottom: 5px;
+        }
+        .item-header h3 {
+            margin: 0;
+            color: #FFAF33;
+        }
+        .section-card { 
+            background: #fff0e6; 
+            border-radius: 8px; 
+            padding: 15px; 
+            margin-bottom: 25px; 
+            border-left: 5px solid #FFAF33; 
+        }
+        .equipment-item { 
+            display: flex; 
+            justify-content: space-between; 
+            background: white; 
+            padding: 8px 12px; 
+            border-radius: 8px; 
+            margin-bottom: 5px; 
+            border: 1px solid #ddd; 
+        }
+        .thumbnail-image {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 4px;
+            margin-bottom: 5px;
+        }
+    </style>
 </head>
 <body>
     <div id="app">
@@ -56,134 +60,88 @@
             <div id="logo-container">
                 <img src="{{ url_for('static', filename='logo.png') }}" id="logo" alt="Logo">
             </div>
-            <h1>Inspección Técnica de Obra</h1>
+            <h1>Reporte Diario de Trabajo</h1>
         </header>
 
-        <input type="hidden" id="project-name">
-
         <div id="form-container">
-
-            <div class="project-header-info" style="background: #f0f0f0; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.9em;">
-                <div><strong>Proyecto:</strong> <span>{{ project.nombre if project else 'N/A' }}</span></div>
-                <div><strong>Cliente:</strong> <span>{{ project.cliente if project else 'N/A' }}</span></div>
-                <div><strong>Número:</strong> <span>{{ project.numero if project else 'N/A' }}</span></div>
-                <div><strong>Ubicación:</strong> <span>{{ project.ubicacion if project else 'N/A' }}</span></div>
+            <div class="project-header-info" style="background: #f0f0f0; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.9em; border-left: 5px solid #FFAF33;">
+                <div><strong>FECHA:</strong> <span id="current-date-display" style="font-weight: bold; color: #000000;"></span></div>
+                <div><strong>ORDEN DE TRABAJO:</strong> <span>{{ project.orden_de_trabajo if project else 'N/A' }}</span></div>
+                <div><strong>CLIENTE:</strong> <span>{{ project.cliente if project else 'N/A' }}</span></div>
+                <div><strong>PLANTA:</strong> <span>{{ project.planta if project else 'N/A' }}</span></div>
+                <div><strong>CONTRATISTA:</strong> <span>{{ project.contratista if project else 'N/A' }}</span></div>
+                <div><strong>UBICACIÓN:</strong> <span>{{ project.ubicacion if project else 'N/A' }}</span></div>
             </div>
 
-            <div class="form-group" style="background: #fff0e6; padding: 15px; border-radius: 8px; border-left: 5px solid #FFAF33; margin-bottom: 25px;">
-                <label><strong>EDIFICACIÓN / ZONA:</strong></label>
-                <div class="input-with-icon">
-                    <input type="text" id="global_edificacion" placeholder="Ej: Torre 1 - Piso 5">
-                    <button class="record-btn" data-target-input="global_edificacion" type="button">
+            <div class="section-card">
+                <label><strong><i class="fas fa-tools"></i> EQUIPOS Y SUMINISTROS:</strong></label>
+                
+                <div class="input-with-icon" style="margin-top: 10px; display: flex; align-items: center; gap: 5px;">
+                    <input type="text" id="input-equipo" placeholder="Ej: Taladro Milwaukee, Extensiones..." style="flex: 1; margin: 0;">
+                    
+                    <button class="record-btn" type="button" data-target-input="input-equipo" title="Grabar voz">
                         <i class="fas fa-microphone"></i>
                     </button>
-                    <button class="stop-btn" title="Detener grabación" style="display: none; color: red; border: none; background: none; cursor: pointer;">
+                    <button class="stop-btn" type="button" data-target-input="input-equipo" style="display: none;" title="Detener">
                         <i class="fas fa-stop"></i>
                     </button>
                 </div>
+
+                <div style="margin-top: 10px; text-align: right;">
+                    <button type="button" onclick="addEquipment()" class="activate-camera-button" style="width: auto; padding: 5px 15px; font-size: 0.85em; background-color: #FFAF33;">
+                        <i class="fas fa-plus"></i> Añadir Equipo
+                    </button>
+                </div>
+
+                <div id="equipment-list" style="margin-top: 10px;">
+                    </div>
             </div>
 
+            <h3 style="color: #000000; margin-bottom: 15px;"><i class="fas fa-clipboard-list"></i> Actividades (Notas Generales)</h3>
+            
             <div id="items-container">
                 </div>
 
             <div class="centrar" style="margin-bottom: 20px;">
-                <button type="button" id="add-item-btn" class="activate-camera-button" style="background-color: #FFAF33;">
-                    <i class="fas fa-plus"></i> Añadir Nuevo Ítem
+                <button type="button" id="add-item-btn" class="activate-camera-button" style="background-color: #FFAF33;" onclick="addItem()">
+                    <i class="fas fa-plus"></i> Añadir Nueva Nota
                 </button>
             </div>
 
             <div id="camera-container" style="display: none;">
-                <video id="videoElement" autoplay playsinline muted></video>
+                <video id="videoElement" autoplay playsinline muted style="width: 100%; border-radius: 10px;"></video>
                 <canvas id="photoCanvas" style="display:none;"></canvas>
             </div>
             
             <div class="action-buttons-wrapper" style="display: none;">
                 <div class="button-row">
-                    <button id="take-photo" class="round-button" onclick="takePhoto()" title="Tomar Foto">
-                        <i class="fas fa-camera"></i>
-                    </button>
-                    <button id="start-record-btn" class="round-button" title="Grabar Video">
-                        <i class="fas fa-video"></i>
-                    </button>
-                    <button id="stop-record-btn" class="round-button" title="Detener Grabación">
-                        <i class="fas fa-stop"></i>
-                    </button>
+                    <button id="take-photo" class="round-button" onclick="takePhoto()" title="Tomar Foto"><i class="fas fa-camera"></i></button>
+                    <button id="start-record-btn" class="round-button" title="Grabar Video" onclick="startVideoRecording()"><i class="fas fa-video"></i></button>
+                    <button id="stop-record-btn" class="round-button" title="Detener Grabación" style="display:none;" onclick="stopVideoRecording()"><i class="fas fa-stop"></i></button>
                 </div>
             </div>
 
             <div class="centrar">
-                <button id="save-record" onclick="saveRecord()">Guardar registro</button>
+                <button id="save-record" onclick="saveFullReport()">Guardar Reporte Diario</button>
             </div>
 
-            <input type="hidden" id="base64-photo">
-            <div id="successMessage" style="display:none;" class="centrar"></div>
-            <div id="loading-overlay" class="loading-overlay">
-                <div class="spinner"></div>
-            </div>
+            <div id="loading-overlay" class="loading-overlay"><div class="spinner"></div></div>
         </div>
     </div>
 
-    <template id="inspection-template">
+    <template id="note-template">
         <div class="dynamic-item-box">
             <div class="item-header">
-                <h3 class="item-title">Ítem #1</h3>
+                <h3 class="item-title">Nota #1</h3>
                 <button type="button" class="remove-item-btn" style="background:none; border:none; color:red; cursor:pointer; display:none;">
                     <i class="fas fa-trash-alt"></i> Eliminar
                 </button>
             </div>
 
             <div class="form-group">
-                <label>Elemento / Área Inspeccionada:</label>
+                <label>Descripción de la Actividad (Nota General):</label>
                 <div class="input-with-icon">
-                    <input type="text" class="field-elemento">
-                    <button class="record-btn" title="Grabar respuesta"><i class="fas fa-microphone"></i></button>
-                    <button class="stop-btn" title="Detener grabación" style="display: none;"><i class="fas fa-stop"></i></button>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label>Especificación Técnica (Planos / Memoria):</label>
-                <div class="input-with-icon">
-                    <input type="text" class="field-especificacion">
-                    <button class="record-btn" title="Grabar respuesta"><i class="fas fa-microphone"></i></button>
-                    <button class="stop-btn" title="Detener grabación" style="display: none;"><i class="fas fa-stop"></i></button>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label>Condición Observada en Obra:</label>
-                <div class="input-with-icon">
-                    <input type="text" class="field-condicion">
-                    <button class="record-btn" title="Grabar respuesta"><i class="fas fa-microphone"></i></button>
-                    <button class="stop-btn" title="Detener grabación" style="display: none;"><i class="fas fa-stop"></i></button>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label>Cumple (Sí/No):</label>
-                <div class="input-with-icon">
-                    <select class="field-cumple form-input" style="width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ccc;">
-                        <option value="">Seleccione...</option>
-                        <option value="Sí">Sí</option>
-                        <option value="No">No</option>
-                        <option value="N/A">N/A</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label>Observaciones:</label>
-                <div class="input-with-icon">
-                    <input type="text" class="field-observaciones">
-                    <button class="record-btn" title="Grabar respuesta"><i class="fas fa-microphone"></i></button>
-                    <button class="stop-btn" title="Detener grabación" style="display: none;"><i class="fas fa-stop"></i></button>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label>Acciones Correctivas (si aplica):</label>
-                <div class="input-with-icon">
-                    <input type="text" class="field-acciones">
+                    <textarea class="field-nota" rows="3" style="width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ccc;"></textarea>
                     <button class="record-btn" title="Grabar respuesta"><i class="fas fa-microphone"></i></button>
                     <button class="stop-btn" title="Detener grabación" style="display: none;"><i class="fas fa-stop"></i></button>
                 </div>
@@ -216,74 +174,86 @@
     </template>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
-
     <script>
         let itemCount = 0;
-        let activeItemIdx = null; // Para saber qué ítem está usando la cámara
+        let activeItemIdx = null;
 
+        // Función para agregar Equipos
+        function addEquipment() {
+            const input = document.getElementById('input-equipo');
+            const val = input.value.trim();
+            if (val) {
+                const list = document.getElementById('equipment-list');
+                const div = document.createElement('div');
+                div.className = 'equipment-item';
+                div.innerHTML = `<span>${val}</span><i class="fas fa-times" onclick="this.parentElement.remove()" style="color:red; cursor:pointer;"></i>`;
+                list.appendChild(div);
+                input.value = '';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Generar fecha actual en formato DD/MM/YYYY
+            const hoy = new Date();
+            const opciones = { day: '2-digit', month: '2-digit', year: 'numeric' };
+            const fechaFormateada = hoy.toLocaleDateString('es-ES', opciones);
+            
+            // Insertar en el span correspondiente
+            const dateDisplay = document.getElementById('current-date-display');
+            if (dateDisplay) {
+                dateDisplay.innerText = fechaFormateada;
+            }
+
+            // Inicializar el primer ítem de notas
+            addItem(); 
+        });
+
+        
+
+        // Función para agregar Notas (basada en addItem de index.html)
         function addItem() {
             itemCount++;
             const container = document.getElementById('items-container');
-            const template = document.getElementById('inspection-template');
+            const template = document.getElementById('note-template');
             const clone = template.content.cloneNode(true);
             const box = clone.querySelector('.dynamic-item-box');
             
             const currentIdx = itemCount - 1;
             box.setAttribute('data-index', currentIdx);
-            box.querySelector('.item-title').innerText = `Ítem #${itemCount}`;
+            box.querySelector('.item-title').innerText = `Actividad #${itemCount}`;
             
-            // Configurar IDs únicos para funciones de voz
-            const inputs = box.querySelectorAll('input[type="text"]');
-            inputs.forEach((input, index) => {
-                const uniqueId = `item_${itemCount}_input_${index}`;
-                input.id = uniqueId;
-                const recordBtn = input.nextElementSibling;
-                const stopBtn = recordBtn.nextElementSibling;
-                if(recordBtn) recordBtn.setAttribute('data-target-input', uniqueId);
-                if(stopBtn) stopBtn.setAttribute('data-target-input', uniqueId);
-            });
+            const textarea = box.querySelector('.field-nota');
+            const uniqueId = `nota_${itemCount}`;
+            textarea.id = uniqueId;
+            box.querySelector('.record-btn').setAttribute('data-target-input', uniqueId);
+            box.querySelector('.stop-btn').setAttribute('data-target-input', uniqueId);
 
-            // Lógica de botones multimedia por ítem
+            // Configuración multimedia por ítem
             const itemCameraBtn = box.querySelector('.btn-item-camera');
-            const itemPhotoAttach = box.querySelector('.btn-item-photo-attach');
-            const itemVideoAttach = box.querySelector('.btn-item-video-attach');
             const itemFileInput = box.querySelector('.item-file-input');
             const itemVideoInput = box.querySelector('.item-video-input');
 
-            // --- LAS LÍNEAS QUE DEBES ASEGURAR QUE ESTÉN AQUÍ ---
-            itemFileInput.onchange = (e) => handleLocalFiles(e, currentIdx, 'foto');
-            itemVideoInput.onchange = (e) => handleLocalFiles(e, currentIdx, 'video');
-            // --------------------------------------------------
-
-            itemCameraBtn.onclick = function() {
+            itemCameraBtn.onclick = () => {
                 activeItemIdx = currentIdx;
                 document.getElementById('camera-container').style.display = 'block';
                 document.querySelector('.action-buttons-wrapper').style.display = 'block';
-                
-                if (typeof startCamera === 'function') {
-                    startCamera();
-                } else {
-                    console.error("La función startCamera no está definida en script.js");
-                }
+                startCamera();
             };
 
-            itemPhotoAttach.onclick = () => itemFileInput.click();
-            itemVideoAttach.onclick = () => itemVideoInput.click();
+            box.querySelector('.btn-item-photo-attach').onclick = () => itemFileInput.click();
+            box.querySelector('.btn-item-video-attach').onclick = () => itemVideoInput.click();
+            
+            itemFileInput.onchange = (e) => handleLocalFiles(e, currentIdx, 'foto');
+            itemVideoInput.onchange = (e) => handleLocalFiles(e, currentIdx, 'video');
 
             if (itemCount > 1) {
                 const removeBtn = box.querySelector('.remove-item-btn');
                 removeBtn.style.display = 'block';
-                removeBtn.onclick = function() {
-                    box.remove();
-                    reindexItems();
-                };
+                removeBtn.onclick = () => { box.remove(); reindexItems(); };
             }
 
             container.appendChild(clone);
-            
-            if (typeof setupVoiceButtons === "function") {
-                setupVoiceButtons();
-            }
+            if (typeof setupVoiceButtons === "function") setupVoiceButtons();
         }
 
         function reindexItems() {
@@ -292,19 +262,13 @@
             boxes.forEach((box) => {
                 itemCount++;
                 box.setAttribute('data-index', itemCount - 1);
-                box.querySelector('.item-title').innerText = `Ítem #${itemCount}`;
+                box.querySelector('.item-title').innerText = `Actividad #${itemCount}`;
             });
         }
 
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('current-date').innerText = new Date().toLocaleDateString();
             addItem();
-            document.getElementById('add-item-btn').addEventListener('click', addItem);
-
-            const urlParams = new URLSearchParams(window.location.search);
-            const projectName = urlParams.get('project');
-            if (projectName) {
-                document.getElementById('project-name').value = projectName;
-            }
         });
     </script>
 </body>
