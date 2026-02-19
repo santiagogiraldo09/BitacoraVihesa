@@ -1430,4 +1430,33 @@ function saveRecord() {
     });
 }
 
+async function saveProject(event) {
+    if (event) event.preventDefault();
+    
+    const form = document.getElementById('project-form');
+    const formData = new FormData(form);
+    const data = {};
+    
+    // Mapeo manual para asegurar que las llaves coincidan con lo que espera Python
+    formData.forEach((value, key) => { data[key] = value; });
 
+    try {
+        const response = await fetch('/add_project', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            alert("✅ " + result.message);
+            window.location.href = '/registros';
+        } else {
+            throw new Error(result.error || "Error desconocido");
+        }
+    } catch (error) {
+        alert("❌ Error al guardar: " + error.message);
+        console.error("Detalle del error:", error);
+    }
+}

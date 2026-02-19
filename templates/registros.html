@@ -29,24 +29,26 @@
 
         <!-- Lista de proyectos como botones con scroll-->
         <div class="records-container">
-           <!-- <button class="record-button" onclick="redirectToProjectDetails('Proyecto Bitacora')">
-            <button class="record-button" onclick="redirectToProjectDetails('Proyecto Bitacora')">
-            <button class="record-button" onclick="redirectToProjectDetails('Proyecto Bitacora')">
-                Proyecto A<br><small>Fecha: 2024-09-22</small>
-            </button>
-            <button class="record-button" onclick="redirectToProjectDetails('Proyecto B')">
-                Proyecto B<br><small>Fecha: 2024-09-21</small>
-            </button>
-            <button class="record-button" onclick="redirectToProjectDetails('Proyecto C')">
-                Proyecto C<br><small>Fecha: 2024-09-20</small>
-            </button>-->
-
-            <!-- Proyectos dinámicos desde PostgreSQL -->
-            {% for project in db_projects %}
-            <button class="record-button" onclick="redirectToProjectDetails('{{ project.name }}', '{{ project.id_proyecto }}')">
-                {{ project.name }}<br><small>Fecha: {{ project.fecha_inicio }}</small>
-            </button>
-            {% endfor %}
+            {% if db_projects %}
+                {% for proyecto in db_projects %}
+                <button class="record-button" onclick="redirectToProjectDetails('{{ proyecto.name }}', '{{ proyecto.id_proyecto }}')">
+                    <div class="project-info" style="display: flex; flex-direction: column; text-align: left; flex-grow: 1;">
+                        <span class="project-name" style="font-weight: bold; font-size: 1.1em; margin-bottom: 2px;">
+                            {{ proyecto.name }}
+                        </span>
+                        <span class="project-client" style="color: #555; font-size: 0.9em; margin-bottom: 2px;">
+                            Cliente: {{ proyecto.cliente }}
+                        </span>
+                        <span class="project-date" style="color: #888; font-size: 0.85em;">
+                            Inicio: {{ proyecto.fecha_inicio }}
+                        </span>
+                    </div>
+                    
+                </button>
+                {% endfor %}
+            {% else %}
+                <p>No se encontraron proyectos.</p>
+            {% endif %}
         </div>
 
         <!-- Menú inferior (ahora fijo)-->

@@ -459,7 +459,7 @@ def create_project(user_id, nombre, fecha_inicio, fecha_fin, director, ubicacion
         
         cursor.execute(
             """INSERT INTO proyectos (nombre_proyecto, fecha_inicio, fecha_fin, director_obra, ubicacion, coordenadas, user_id, cliente, numero_proyecto)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id_proyecto""",
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id_proyecto""",
             (nombre, fecha_inicio, fecha_fin, director, ubicacion, coordenadas, user_id, cliente, numero_proyecto)
         )
         
@@ -481,8 +481,8 @@ def get_user_projects(user_id):
         cursor = conn.cursor()
         
         cursor.execute(
-            """SELECT id_proyecto, nombre_proyecto, fecha_inicio, director_obra, user_id 
-               FROM proyectos WHERE user_id = %s ORDER BY fecha_inicio DESC""",
+            """SELECT id_proyecto, nombre_proyecto, fecha_inicio, cliente, user_id 
+               FROM "proyectosVihesa" WHERE user_id = %s ORDER BY fecha_inicio DESC""",
             (user_id,)
         )
         
@@ -492,7 +492,7 @@ def get_user_projects(user_id):
                 'id_proyecto': row[0],
                 'name': row[1],
                 'fecha_inicio': row[2].strftime('%Y-%m-%d'),
-                'director_obra': row[3],
+                'cliente': row[3],
                 'user_id': row[4],
 
             })
@@ -596,24 +596,28 @@ def principalscreen():
 
 @app.route('/paginaprincipal')
 def paginaprincipal():
-    if 'user_id' not in session:
-        return redirect(url_for('principalscreen'))
-    
     project_id = request.args.get('project_id')
-    if project_id:
-        # Verificar que el proyecto pertenece al usuario
+    project_name = request.args.get('project')
+
+    if not project_id:
+        return redirect(url_for('history')) # <--- AQUÍ ES DONDE TE ESTÁ MANDANDO
+
+    try:
         conn = psycopg2.connect(**POSTGRES_CONFIG)
         cursor = conn.cursor()
-        cursor.execute(
-            "SELECT 1 FROM proyectos WHERE id_proyecto = %s AND user_id = %s",
-            (project_id, session['user_id'])
-        )
-        if not cursor.fetchone():
-            flash('No tienes acceso a este proyecto', 'error')
-            return redirect(url_for('history'))
-        conn.close()
-    
-    return render_template('paginaprincipal.html')
+        
+        # ASEGÚRATE DE QUE ESTE QUERY USE LA TABLA NUEVA
+        cursor.execute('SELECT * FROM "proyectosVihesa" WHERE id_proyecto = %s', (project_id,))
+        proyecto = cursor.fetchone()
+        
+        if not proyecto:
+            # Si el ID existe en la URL pero no en la tabla, te manda a history
+            return redirect(url_for('history')) 
+
+        return render_template('paginaprincipal.html', project_id=project_id, project_name=project_name)
+    except Exception as e:
+        print(f"Error: {e}")
+        return redirect(url_for('history'))
 
 @app.route('/registro', methods=['GET', 'POST'])
 def registro():
@@ -986,48 +990,41 @@ def disciplinerecords():
 def projectdetails():
     return render_template('projectdetails.html')
 
-@app.route('/addproject', methods=['GET', 'POST'])
+@app.route('/add_project', methods=['GET', 'POST'])
 def add_project():
-    if 'user_id' not in session:  # Asegúrate de tener el user_id en la sesión
-        return redirect(url_for('principalscreen'))
+    if 'user_id' not in session:
+        return jsonify({"error": "No autorizado"}), 401
     
     if request.method == 'POST':
         try:
-            # Obtener datos del formulario
-            project_data = {
-                'name': request.form['project-name'],
-                'start_date': request.form['start-date'],
-                'end_date': request.form['end-date'],
-                'director': request.form['director'],
-                'location': request.form['location'],
-                'coordinates': request.form['coordinates'],
-                'cliente': request.form['cliente'],
-                'numero_proyecto': request.form['numero-proyecto'],
-                'user_id': session['user_id']  # ID del usuario actual
-            }
+            data = request.json
+            conn = psycopg2.connect(**POSTGRES_CONFIG)
+            cursor = conn.cursor()
             
-            # Guardar en PostgreSQL
-            project_id = create_project(
-                project_data['user_id'],
-                project_data['name'],
-                project_data['start_date'],
-                project_data['end_date'],
-                project_data['director'],
-                project_data['location'],
-                project_data['coordinates'],
-                project_data['cliente'],
-                project_data['numero_proyecto']
-            )
+            # Query ajustado a la tabla "proyectosVihesa" con sus 10 columnas
+            cursor.execute("""
+                INSERT INTO "proyectosVihesa" (
+                    nombre_proyecto, fecha_inicio, fecha_fin, cliente, contratista, 
+                    orden_de_trabajo, planta, ubicacion, user_id
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) 
+                RETURNING id_proyecto
+            """, (
+                data.get('project-name'), data.get('start-date'), data.get('end-date'),
+                data.get('cliente'), data.get('contratista'), data.get('orden-trabajo'),
+                data.get('planta'), data.get('location'), session['user_id']
+            ))
             
-            if project_id:
-                flash('Proyecto creado exitosamente', 'success')
-                return redirect(url_for('registros'))
-            else:
-                flash('Error al crear el proyecto', 'error')
-                
+            nuevo_id = cursor.fetchone()[0]
+            conn.commit()
+            cursor.close()
+            conn.close()
+            
+            return jsonify({"status": "success", "message": f"Proyecto {nuevo_id} registrado exitosamente"}), 201
+            
         except Exception as e:
-            flash(f'Error al guardar el proyecto: {str(e)}', 'error')
-    
+            print(f"Error en BD: {str(e)}")
+            return jsonify({"status": "error", "error": str(e)}), 500
+
     return render_template('addproject.html')
 
 
