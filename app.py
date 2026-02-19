@@ -272,7 +272,8 @@ def subir_attachments_synchro(token, fotos, videos):
     except Exception as e:
         print(f"❌ Error en subir_attachments: {str(e)}")
         return 0
-    
+
+
 @app.route('/guardar-formulario', methods=['POST'])
 def guardar_formulario():
     """Recibe datos del frontend y los envía a Synchro"""
@@ -897,17 +898,15 @@ def registros():
 # Ruta para la vista "history"
 @app.route('/history')
 def history():
-    # Obtener proyectos del Blob Storage
-    #blob_projects = get_projects_from_blob()
-    # Obtener proyectos de PostgreSQL
+    if 'user_id' not in session:
+        return redirect(url_for('principalscreen'))
+    
+    # Obtenemos los proyectos de PostgreSQL
     db_projects = get_user_projects(session['user_id'])
     
-    # Obtener proyectos de Azure Blob (si aún los necesitas)
-    #blob_projects = get_projects_from_blob()  # Tu función existente
-    
-    # Combinar proyectos (o usar solo los de PostgreSQL)
-    return render_template('history.html', 
-                         db_projects=db_projects)
+    # IMPORTANTE: get_user_projects ya devuelve 'name', 
+    # pero asegúrate de que el HTML lo use correctamente.
+    return render_template('history.html', db_projects=db_projects)
 
 @app.route('/usuario')
 def usuario():
@@ -919,71 +918,82 @@ def inventario():
 
 # En tu archivo app.py
 
-@app.route('/historialRegistro')
-def historialregistro():
-    project_id = request.args.get('project_id')
-    project_name = request.args.get('project_name', 'Proyecto')
+@app.route('/historialRegistro/<int:id_proyecto>')
+def historialregistro(id_proyecto):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
     
-    if not project_id:
-        flash("No se proporcionó el ID del proyecto", "error")
-        return redirect(url_for('registros')) # Ajustado a tu ruta de lista de proyectos
-
-    registros = []
     conn = None
     try:
         conn = psycopg2.connect(**POSTGRES_CONFIG)
         cursor = conn.cursor()
 
-        # 1. Obtener los registros de la NUEVA TABLA reporte_fiscalizacion
+        # 1. Info del proyecto (Solo esta lleva comillas dobles según tu indicación)
+        cursor.execute('SELECT nombre_proyecto, cliente FROM "proyectosVihesa" WHERE id_proyecto = %s', (id_proyecto,))
+        proyecto_info = cursor.fetchone()
+
+        # 2. Reportes (Tablas sin comillas)
         cursor.execute("""
-            SELECT id_reporte, edificacion_zona, item_numero, area_inspeccionada, 
-                   especificacion_tecnica, condicion_observada, cumple, 
-                   observaciones, acciones_correctivas
-            FROM reporte_fiscalizacion
-            WHERE id_proyecto = %s
-            ORDER BY id_reporte DESC
-        """, (project_id,))
-        
-        registros_principales = cursor.fetchall()
+            SELECT id_reporte, fecha FROM reporteDeTrabajoVihesa 
+            WHERE id_proyecto = %s ORDER BY fecha DESC
+        """, (id_proyecto,))
+        reportes_rows = cursor.fetchall()
 
-        # 2. Para cada registro, obtener sus fotos y videos
-        for row in registros_principales:
-            id_reporte = row[0]
+        reportes_completos = []
+        for r_row in reportes_rows:
+            id_rep, fecha_dt = r_row
             
-            # Buscamos fotos (id_registro en tu tabla de fotos ahora contiene el id_reporte)
-            cursor.execute("SELECT imagen_base64, description FROM fotos_registro WHERE id_registro = %s", (id_reporte,))
-            fotos = [{'file_data': item[0], 'description': item[1]} for item in cursor.fetchall()]
-            
-            # Buscamos videos
-            cursor.execute("SELECT video_base64, description FROM videos_registro WHERE id_registro = %s", (id_reporte,))
-            videos = [{'file_data': item[0], 'description': item[1]} for item in cursor.fetchall()]
+            # 3. Equipos (Sin comillas)
+            cursor.execute('SELECT nombre_equipo FROM reporteEquiposVihesa WHERE id_reporte = %s', (id_rep,))
+            equipos = [e[0] for e in cursor.fetchall()]
 
-            # Mapeamos los datos con los nombres de la nueva tabla
-            registros.append({
-                'id': id_reporte,
-                'edificacion_zona': row[1],
-                'item_numero': row[2],
-                'area_inspeccionada': row[3],
-                'especificacion_tecnica': row[4],
-                'condicion_observada': row[5],
-                'cumple': row[6],
-                'observaciones': row[7],
-                'acciones_correctivas': row[8],
-                'fotos': fotos,
-                'videos': videos
+            # 4. Notas (Sin comillas)
+            cursor.execute('SELECT id_nota_item, nota_texto FROM reporteNotasVihesa WHERE id_reporte = %s', (id_rep,))
+            notas_rows = cursor.fetchall()
+            
+            notas_data = []
+            for n_row in notas_rows:
+                id_nota, texto = n_row
+                # 5 y 6. Multimedia (Sin comillas)
+                # 5. Fotos
+                cursor.execute('SELECT imagen_base64 FROM fotos_registro_vihesa WHERE id_nota_item = %s', (id_nota,))
+                fotos_raw = cursor.fetchall()
+                fotos = []
+                for f in fotos_raw:
+                    img_str = f[0]
+                    # Si el string contiene el encabezado, lo quitamos para enviarlo limpio
+                    if img_str and "," in img_str:
+                        img_str = img_str.split(",")[1]
+                    fotos.append(img_str)
+
+                # 6. Videos
+                cursor.execute('SELECT video_base64 FROM videos_registro_vihesa WHERE id_nota_item = %s', (id_nota,))
+                videos_raw = cursor.fetchall()
+                videos = []
+                for v in videos_raw:
+                    vid_str = v[0]
+                    if vid_str and "," in vid_str:
+                        vid_str = vid_str.split(",")[1]
+                    videos.append(vid_str)
+
+                notas_data.append({'texto': texto, 'fotos': fotos, 'videos': videos})
+
+            reportes_completos.append({
+                'id_reporte': id_rep,
+                'fecha': fecha_dt.strftime('%d/%m/%Y') if fecha_dt else "S/F",
+                'equipos': equipos,
+                'notas': notas_data
             })
 
+        return render_template('historialRegistro.html', 
+                               proyecto=proyecto_info, 
+                               reportes=reportes_completos, 
+                               id_proyecto=id_proyecto)
     except Exception as e:
-        print(f"Error al obtener registros: {str(e)}")
-        flash("Error al cargar el historial de registros.", "error")
+        print(f"Error: {e}")
+        return redirect(url_for('history'))
     finally:
-        if conn:
-            conn.close()
-    
-    return render_template('historialRegistro.html',
-                           registros=registros,
-                           project_name=project_name,
-                           project_id=project_id)
+        if conn: conn.close()
 
 @app.route('/disciplinerecords')
 def disciplinerecords():
@@ -1076,7 +1086,7 @@ def add_project():
             cursor.close()
             conn.close()
             
-            return jsonify({"status": "success", "message": f"Proyecto {nuevo_id} registrado exitosamente"}), 201
+            return jsonify({"status": "success", "message": f"Proyecto registrado exitosamente"}), 201
             
         except Exception as e:
             print(f"Error en BD: {str(e)}")
@@ -1198,7 +1208,7 @@ def guardar_registro():
                 """, (id_item_actual, video_obj.get('file_data'), video_obj.get('description')))
 
         conn.commit()
-        return jsonify({"mensaje": "¡Reporte guardado con imágenes por ítem!"}), 200
+        return jsonify({"mensaje": "¡Reporte guardado!"}), 200
 
     except Exception as e:
         if conn: conn.rollback()
