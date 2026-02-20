@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reporte Diario de Trabajo - Vihesa</title>
+    <title>Reporte Diario de Trabajo</title>
     <link rel="icon" href="{{ url_for('static', filename='logo.png') }}" type="image/x-icon">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        /* Mantenemos tus estilos de tarjetas dinámicas */
+        /* Estilos originales preservados */
         .dynamic-item-box {
             border: 1px solid #ddd;
             padding: 15px;
@@ -21,7 +21,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 2px solid #FFAF33; /* Color naranja característico */
+            border-bottom: 2px solid #FFAF33; 
             margin-bottom: 15px;
             padding-bottom: 5px;
         }
@@ -51,6 +51,17 @@
             object-fit: cover;
             border-radius: 4px;
             margin-bottom: 5px;
+        }
+        /* Estilo para el nuevo botón de cierre */
+        .btn-cerrar-video {
+            background-color: #ff4d4d;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -93,14 +104,12 @@
                     </button>
                 </div>
 
-                <div id="equipment-list" style="margin-top: 10px;">
-                    </div>
+                <div id="equipment-list" style="margin-top: 10px;"></div>
             </div>
 
             <h3 style="color: #000000; margin-bottom: 15px;"><i class="fas fa-clipboard-list"></i> Actividades (Notas Generales)</h3>
             
-            <div id="items-container">
-                </div>
+            <div id="items-container"></div>
 
             <div class="centrar" style="margin-bottom: 20px;">
                 <button type="button" id="add-item-btn" class="activate-camera-button" style="background-color: #FFAF33;" onclick="addItem()">
@@ -108,11 +117,14 @@
                 </button>
             </div>
 
-            <div id="camera-container" style="display: none;">
+            <div id="camera-container" style="display: none; text-align: center;">
                 <video id="videoElement" autoplay playsinline muted style="width: 100%; border-radius: 10px;"></video>
                 <canvas id="photoCanvas" style="display:none;"></canvas>
+                <button type="button" class="btn-cerrar-video" onclick="detenerCamara()">
+                    <i class="fas fa-times"></i> Cerrar Cámara
+                </button>
             </div>
-            
+
             <div class="action-buttons-wrapper" style="display: none;">
                 <div class="button-row">
                     <button id="take-photo" class="round-button" onclick="takePhoto()" title="Tomar Foto"><i class="fas fa-camera"></i></button>
@@ -142,14 +154,14 @@
                 <label>Descripción de la Actividad (Nota General):</label>
                 <div class="input-with-icon">
                     <textarea class="field-nota" rows="3" style="width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #ccc;"></textarea>
-                    <button class="record-btn" title="Grabar respuesta"><i class="fas fa-microphone"></i></button>
-                    <button class="stop-btn" title="Detener grabación" style="display: none;"><i class="fas fa-stop"></i></button>
+                    <button class="record-btn" type="button" title="Grabar respuesta"><i class="fas fa-microphone"></i></button>
+                    <button class="stop-btn" type="button" title="Detener grabación" style="display: none;"><i class="fas fa-stop"></i></button>
                 </div>
             </div>
 
             <div class="multimedia-item-section" style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px;">
                 <div class="centrar" style="margin-bottom: 10px;">
-                    <button class="activate-camera-button btn-item-camera" style="width: auto; padding: 10px 20px;">
+                    <button type="button" class="activate-camera-button btn-item-camera" style="width: auto; padding: 10px 20px;">
                         <i class="fas fa-camera"></i> Activar Cámara
                     </button>
                 </div>
@@ -157,10 +169,10 @@
                 <div class="attachment-controls">
                     <label>Adjuntar Evidencia:</label>
                     <div class="button-row">
-                        <button class="clip-button btn-item-photo-attach" title="Adjuntar imagen">📎</button>
+                        <button type="button" class="clip-button btn-item-photo-attach" title="Adjuntar imagen">📎</button>
                         <input type="file" class="item-file-input" accept="image/*" multiple style="display:none;">
                         
-                        <button class="clip-button btn-item-video-attach" title="Adjuntar video">🎥</button>
+                        <button type="button" class="clip-button btn-item-video-attach" title="Adjuntar video">🎥</button>
                         <input type="file" class="item-video-input" accept="video/*" style="display:none;">
                     </div>
                 </div>
@@ -177,8 +189,30 @@
     <script>
         let itemCount = 0;
         let activeItemIdx = null;
+        let videoStream = null;
 
-        // Función para agregar Equipos
+        // Función original startCamera que usa tu script.js (asegúrate de que startCamera() esté definida en tu script.js o usa esta)
+        async function activarCamaraLocal() {
+            try {
+                videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                document.getElementById('videoElement').srcObject = videoStream;
+                document.getElementById('camera-container').style.display = 'block';
+                document.querySelector('.action-buttons-wrapper').style.display = 'block';
+            } catch (err) {
+                console.error("Error al abrir cámara: ", err);
+            }
+        }
+
+        function detenerCamara() {
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+                videoStream = null;
+            }
+            document.getElementById('camera-container').style.display = 'none';
+            document.querySelector('.action-buttons-wrapper').style.display = 'none';
+            document.getElementById('videoElement').srcObject = null;
+        }
+
         function addEquipment() {
             const input = document.getElementById('input-equipo');
             const val = input.value.trim();
@@ -192,25 +226,6 @@
             }
         }
 
-        document.addEventListener('DOMContentLoaded', function() {
-            // Generar fecha actual en formato DD/MM/YYYY
-            const hoy = new Date();
-            const opciones = { day: '2-digit', month: '2-digit', year: 'numeric' };
-            const fechaFormateada = hoy.toLocaleDateString('es-ES', opciones);
-            
-            // Insertar en el span correspondiente
-            const dateDisplay = document.getElementById('current-date-display');
-            if (dateDisplay) {
-                dateDisplay.innerText = fechaFormateada;
-            }
-
-            // Inicializar el primer ítem de notas
-            addItem(); 
-        });
-
-        
-
-        // Función para agregar Notas (basada en addItem de index.html)
         function addItem() {
             itemCount++;
             const container = document.getElementById('items-container');
@@ -228,16 +243,20 @@
             box.querySelector('.record-btn').setAttribute('data-target-input', uniqueId);
             box.querySelector('.stop-btn').setAttribute('data-target-input', uniqueId);
 
-            // Configuración multimedia por ítem
             const itemCameraBtn = box.querySelector('.btn-item-camera');
             const itemFileInput = box.querySelector('.item-file-input');
             const itemVideoInput = box.querySelector('.item-video-input');
 
             itemCameraBtn.onclick = () => {
                 activeItemIdx = currentIdx;
+                // Usamos la función que abre la cámara y muestra los controles
+                if(typeof startCamera === 'function') {
+                    startCamera(); // Llama a la de tu script.js
+                } else {
+                    activarCamaraLocal();
+                }
                 document.getElementById('camera-container').style.display = 'block';
                 document.querySelector('.action-buttons-wrapper').style.display = 'block';
-                startCamera();
             };
 
             box.querySelector('.btn-item-photo-attach').onclick = () => itemFileInput.click();
@@ -253,6 +272,8 @@
             }
 
             container.appendChild(clone);
+            
+            // ESTA LÍNEA ES VITAL PARA EL MICRÓFONO
             if (typeof setupVoiceButtons === "function") setupVoiceButtons();
         }
 
@@ -267,8 +288,14 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('current-date').innerText = new Date().toLocaleDateString();
+            const hoy = new Date();
+            const dateDisplay = document.getElementById('current-date-display');
+            if (dateDisplay) {
+                dateDisplay.innerText = hoy.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+            }
             addItem();
+            // Inicializar micrófonos de los elementos estáticos (como el de equipos)
+            if (typeof setupVoiceButtons === "function") setupVoiceButtons();
         });
     </script>
 </body>

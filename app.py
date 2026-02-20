@@ -31,6 +31,13 @@ import base64
 import uuid
 import json
 import requests
+from datetime import datetime
+import pytz
+
+
+# Configurar zona horaria
+tijuana_tz = pytz.timezone('America/Tijuana')
+fecha_hora_tijuana = datetime.now(tijuana_tz)
 
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -980,7 +987,7 @@ def historialregistro(id_proyecto):
 
             reportes_completos.append({
                 'id_reporte': id_rep,
-                'fecha': fecha_dt.strftime('%d/%m/%Y') if fecha_dt else "S/F",
+                'fecha': fecha_dt.strftime('%d/%m/%Y %H:%M:%S') if fecha_dt else "S/F",
                 'equipos': equipos,
                 'notas': notas_data
             })
@@ -1016,7 +1023,7 @@ def guardar_reporte_vihesa():
         cursor.execute("""
             INSERT INTO reporteDeTrabajoVihesa (id_proyecto, fecha, user_id) 
             VALUES (%s, %s, %s) RETURNING id_reporte
-        """, (data['id_proyecto'], data['fecha'], session['user_id']))
+        """, (data['id_proyecto'], fecha_hora_tijuana, session['user_id']))
         id_reporte = cursor.fetchone()[0]
 
         # PASO 2: Tabla Equipos (reporteEquiposVihesa)
